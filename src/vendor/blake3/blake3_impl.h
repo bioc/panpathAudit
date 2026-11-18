@@ -1,3 +1,16 @@
+/*
+ * Vendored third-party code -- BLAKE3 reference C implementation.
+ *
+ * Upstream:  https://github.com/BLAKE3-team/BLAKE3 (file c/blake3_impl.h)
+ * Version:   1.8.2 (tag 1.8.2, commit df610ddc3b93841ffc59a87e3da659a15910eb46)
+ * Authors:   Jack O'Connor, Samuel Neves
+ * License:   Upstream offers CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH
+ *            LLVM-exception. panpathAudit redistributes this file under
+ *            CC0-1.0; see inst/third-party/BLAKE3-LICENSE-CC0.
+ *
+ * Unmodified from upstream apart from this header.
+ */
+
 #ifndef BLAKE3_IMPL_H
 #define BLAKE3_IMPL_H
 

@@ -1,3 +1,17 @@
+/*
+ * Vendored third-party code -- SHA-256 implementation.
+ *
+ * Upstream:  https://github.com/amosnier/sha-2 (file sha-256.h)
+ * Version:   commit b29613850d6e54e7159197ef42c7d22d012b6367 (2023-12-31);
+ *            identical at master commit 565f65009bdd98267361b17d50cddd7c9beb3e6c
+ * Author:    Alain Mosnier
+ * License:   Upstream offers Unlicense OR 0BSD. panpathAudit redistributes
+ *            this file under the Zero-Clause BSD license (0BSD),
+ *            (c) 2021 Alain Mosnier; see inst/third-party/SHA256-LICENSE.md.
+ *
+ * Unmodified from upstream apart from this header.
+ */
+
 #ifndef SHA_256_H
 #define SHA_256_H
 

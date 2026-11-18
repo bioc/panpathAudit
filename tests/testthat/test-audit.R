@@ -7,7 +7,9 @@ test_that("identical and divergent paths report stable outcomes", {
     expect_equal(row$record_type, "P")
     expect_equal(row$source_sha256, row$graph_sha256)
     expect_false(auditProvenance(result)$topology_validated)
-    expect_equal(auditProvenance(result)$reference_version, "0.1.2")
+    expect_equal(
+        auditProvenance(result)$reference_version, .PANPATH_REFERENCE_VERSION
+    )
 
     divergent <- audit_case(">sample\nacga", "S\t1\tAC\nS\t2\tGT\nP\tsample\t1+,2+\t*")
     row <- outcome_frame(auditGFA(divergent$fasta, divergent$gfa))
@@ -91,6 +93,32 @@ test_that("mapping arguments are validated", {
         class = "panpathAudit_argument_error")
     expect_error(auditGFA(case$fasta, case$gfa, memoryMiB = 0),
         class = "panpathAudit_argument_error")
+})
+
+test_that("reference version matches PROVENANCE.md", {
+    provenance <- system.file("PROVENANCE.md", package = "panpathAudit")
+    expect_true(nzchar(provenance))
+    tag <- grep("Rust reference tag:", readLines(provenance), value = TRUE)
+    expect_length(tag, 1L)
+    expect_equal(
+        sub(".*`v([^`]+)`.*", "\\1", tag), .PANPATH_REFERENCE_VERSION
+    )
+})
+
+test_that("accessors reject objects that are not audit results", {
+    accessors <- list(
+        auditOutcomes, auditSummary, auditStatistics,
+        auditProvenance, auditTelemetry
+    )
+    for (accessor in accessors) {
+        expect_error(accessor(data.frame(x = 1)),
+            class = "panpathAudit_argument_error")
+        expect_error(accessor(NULL), "PanPathAuditResult")
+    }
+    error <- tryCatch(auditOutcomes(list()), error = identity)
+    expect_match(conditionMessage(error), "not list")
+    expect_identical(deparse(conditionCall(error)), "auditOutcomes(list())")
+    expect_s4_class(error$diagnostics, "DataFrame")
 })
 
 test_that("gzip is detected by content", {

@@ -73,11 +73,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("panpathAudit")
 ```
 
-You can install the development version of `panpathAudit`:
-```r
-devtools::install_github("gkanogiannis/panpathAudit")
-```
-Building the package requires a C++20 compiler and zlib.
+Building the package from source requires a C++20 compiler and zlib.
 
 ```{r setup}
 library(panpathAudit)
@@ -461,6 +457,25 @@ plot_coverage <- function(
 
 plot_coverage(as.data.frame(auditOutcomes(walk_result)))
 ```
+
+## Sequences already in R
+
+Sequences already loaded in a Bioconductor workflow can be passed as a
+`DNAStringSet` instead of a FASTA path. Each set counts as one source, so it
+takes one row of `mapping`, just like a file. A list can mix paths and
+`DNAStringSet` objects. Here the `chr1` contig from above is audited from
+memory with the same PanSN mapping, and the outcome is the same:
+
+```{r dnastringset, eval = requireNamespace("Biostrings", quietly = TRUE)}
+chr1 <- Biostrings::DNAStringSet(c(chr1 = "ACGTGT"))
+from_memory <- auditGFA(chr1, walk_gfa, mapping = mapping)
+auditOutcomes(from_memory)[, c("identifier", "status", "record_type")]
+auditProvenance(from_memory)$fasta
+```
+
+Each set is written to a temporary FASTA file for the duration of the call,
+and provenance and diagnostics name it as `<DNAStringSet ...>` instead of the
+temporary path.
 
 # Comprehensive statistics
 

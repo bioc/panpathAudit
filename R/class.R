@@ -31,11 +31,39 @@ setValidity("PanPathAuditResult", function(object) {
     object
 }
 
-auditOutcomes <- function(x) x@outcomes
-auditSummary <- function(x) x@summary
-auditStatistics <- function(x) x@statistics
-auditProvenance <- function(x) x@provenance
-auditTelemetry <- function(x) x@telemetry
+.check_result <- function(x, call = sys.call(-1L)) {
+    if (!is(x, "PanPathAuditResult")) {
+        .argument_error(
+            sprintf(
+                "x must be a PanPathAuditResult (from auditGFA()), not %s",
+                paste(class(x), collapse = "/")
+            ),
+            call = call
+        )
+    }
+    invisible(x)
+}
+
+auditOutcomes <- function(x) {
+    .check_result(x)
+    x@outcomes
+}
+auditSummary <- function(x) {
+    .check_result(x)
+    x@summary
+}
+auditStatistics <- function(x) {
+    .check_result(x)
+    x@statistics
+}
+auditProvenance <- function(x) {
+    .check_result(x)
+    x@provenance
+}
+auditTelemetry <- function(x) {
+    .check_result(x)
+    x@telemetry
+}
 
 setMethod("show", "PanPathAuditResult", function(object) {
     counts <- object@summary$counts

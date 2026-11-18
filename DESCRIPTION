@@ -1,13 +1,25 @@
 Package: panpathAudit
 Type: Package
 Title: Audit Sequence Preservation in GFA Traversals
-Version: 0.99.2
+Version: 0.99.3
 Authors@R:
     c(person(given = "Anestis",
              family = "Gkanogiannis",
              role = c("aut", "cre"),
              email = "anestis@gkanogiannis.com",
-             comment = c(ORCID = "0000-0002-6441-0688"))
+             comment = c(ORCID = "0000-0002-6441-0688")),
+      person(given = "Jack",
+             family = "O'Connor",
+             role = "cph",
+             comment = "Author of the bundled BLAKE3 C implementation in src/vendor/blake3 (CC0 license)"),
+      person(given = "Samuel",
+             family = "Neves",
+             role = "cph",
+             comment = "Author of the bundled BLAKE3 C implementation in src/vendor/blake3 (CC0 license)"),
+      person(given = "Alain",
+             family = "Mosnier",
+             role = "cph",
+             comment = "Author of the bundled SHA-256 implementation in src/vendor/sha256 (0BSD license)")
     )
 Description: Audits source FASTA sequences against named paths and
     coordinate-aware walks in GFA files. It reports exact recovery,
@@ -24,6 +36,7 @@ Imports:
 LinkingTo: Rcpp
 Suggests:
     BiocCheck,
+    Biostrings,
     BiocStyle,
     knitr,
     rmarkdown,

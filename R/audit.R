@@ -1,3 +1,9 @@
+# Version of the Rust panpath-audit tool whose behaviour the C++ engine
+# reproduces. Update this together with the "Rust reference tag" line in
+# inst/PROVENANCE.md when the engine is re-synced with a newer Rust release;
+# a test checks that the two agree.
+.PANPATH_REFERENCE_VERSION <- "0.1.2"
+
 .argument_error <- function(
     message,
     code = "INVALID_ARGUMENT",
@@ -95,8 +101,108 @@
     )
 }
 
-.native_error <- function(rows, call) {
+# Normalize `fasta` into one entry per source. Each entry is either a file
+# path or an in-memory DNAStringSet. Nothing is written to disk here, so that
+# all arguments are validated before any temporary file is created.
+.fasta_inputs <- function(fasta, call) {
+    usage <- paste(
+        "fasta must be a character vector of FASTA paths, a DNAStringSet,",
+        "or a list of these"
+    )
+    if (is.character(fasta)) {
+        if (!length(fasta) || anyNA(fasta) || any(!nzchar(fasta)))
+            .argument_error(
+                "fasta paths must be non-empty and not NA", call = call
+            )
+        return(as.list(fasta))
+    }
+    if (is(fasta, "DNAStringSet")) fasta <- list(fasta)
+    else if (is(fasta, "DNAStringSetList")) fasta <- as.list(fasta)
+    if (!is.list(fasta) || !length(fasta)) .argument_error(usage, call = call)
+    for (index in seq_along(fasta)) {
+        entry <- fasta[[index]]
+        is_path <- is.character(entry) && length(entry) == 1L &&
+            !is.na(entry) && nzchar(entry)
+        if (!is_path && !is(entry, "DNAStringSet"))
+            .argument_error(
+                sprintf("%s; element %d is neither", usage, index),
+                call = call
+            )
+        if (is(entry, "DNAStringSet")) {
+            ids <- names(entry)
+            if (length(entry) &&
+                (is.null(ids) || anyNA(ids) || any(!grepl("\\S", ids))))
+                .argument_error(
+                    sprintf(
+                        "DNAStringSet in fasta element %d must have %s",
+                        index, "a non-empty name for every sequence"
+                    ),
+                    call = call
+                )
+            # A line break in a name would split the FASTA header when the
+            # set is written out and silently change the sequence.
+            if (any(grepl("[\r\n]", ids)))
+                .argument_error(
+                    sprintf(
+                        "DNAStringSet in fasta element %d has %s",
+                        index, "sequence names containing line breaks"
+                    ),
+                    call = call
+                )
+        }
+    }
+    fasta
+}
+
+# Turn the entries from .fasta_inputs() into paths the engine can read.
+# DNAStringSet entries are written to temporary FASTA files; `labels` is what
+# provenance and diagnostics show in place of those temporary paths.
+.fasta_files <- function(inputs) {
+    if (any(vapply(inputs, is, logical(1), "DNAStringSet")) &&
+        !requireNamespace("Biostrings", quietly = TRUE)) {
+        .argument_error(
+            "the Biostrings package is required for DNAStringSet input",
+            call = sys.call(-1L)
+        )
+    }
+    entry_names <- names(inputs)
+    paths <- labels <- character(length(inputs))
+    temporary <- character()
+    # If writing any set fails, remove the files already written; on success
+    # the caller takes over cleanup.
+    completed <- FALSE
+    on.exit(if (!completed) unlink(temporary))
+    for (index in seq_along(inputs)) {
+        entry <- inputs[[index]]
+        if (is.character(entry)) {
+            paths[[index]] <- labels[[index]] <-
+                normalizePath(path.expand(entry), mustWork = FALSE)
+            next
+        }
+        file <- tempfile("panpathAudit-", fileext = ".fa")
+        temporary <- c(temporary, file)
+        Biostrings::writeXStringSet(entry, file)
+        paths[[index]] <- normalizePath(file, mustWork = TRUE)
+        name <- if (!is.null(entry_names) && nzchar(entry_names[[index]])) {
+            entry_names[[index]]
+        } else {
+            as.character(index)
+        }
+        # Keep labels unique when list names repeat.
+        if (sum(entry_names == name, na.rm = TRUE) > 1L)
+            name <- sprintf("%s, element %d", name, index)
+        labels[[index]] <- sprintf("<DNAStringSet %s>", name)
+    }
+    completed <- TRUE
+    list(paths = paths, labels = labels, temporary = temporary)
+}
+
+.native_error <- function(rows, call, labels = NULL) {
     diagnostics <- .diagnostic_frame(rows)
+    if (length(labels) && nrow(diagnostics)) {
+        hit <- match(diagnostics$path, names(labels))
+        diagnostics$path[!is.na(hit)] <- labels[hit[!is.na(hit)]]
+    }
     operational <- any(diagnostics$category %in% c("operational", "internal"))
     class <- if (operational) {
         "panpathAudit_operational_error"
@@ -132,7 +238,7 @@
     )
     provenance <- c(list(
         package_version = as.character(utils::packageVersion("panpathAudit")),
-        reference_version = "0.1.2",
+        reference_version = .PANPATH_REFERENCE_VERSION,
         fasta = fasta, gfa = gfa,
         mapping = DataFrame(mapping),
         statistics = statistics, threads = threads,
@@ -181,23 +287,19 @@ auditGFA <- function(
     alignmentMaxCells = 10000000
 ) {
     call <- match.call()
-    if (!is.character(fasta) || !length(fasta) ||
-        anyNA(fasta) || any(!nzchar(fasta))) {
-        .argument_error(
-            "fasta must be a non-empty character vector", call = call
-        )
-    }
+    inputs <- .fasta_inputs(fasta, call)
     if (!is.character(gfa) || length(gfa) != 1L || is.na(gfa) || !nzchar(gfa))
         .argument_error("gfa must be one non-empty path", call = call)
     statistics <- match.arg(statistics)
     threads <- .scalar_whole(threads, "threads", .Machine$integer.max)
     memoryMiB <- .scalar_whole(memoryMiB, "memoryMiB", (2^53 - 1) / 1024^2)
     alignmentMaxCells <- .scalar_whole(alignmentMaxCells, "alignmentMaxCells")
-    mapping <- .mapping_frame(mapping, length(fasta))
-    fasta <- normalizePath(path.expand(fasta), mustWork = FALSE)
+    mapping <- .mapping_frame(mapping, length(inputs))
     gfa <- normalizePath(path.expand(gfa), mustWork = FALSE)
-    sources <- lapply(seq_along(fasta), function(index) list(
-        path = enc2utf8(fasta[[index]]), mode = mapping$mode[[index]],
+    files <- .fasta_files(inputs)
+    on.exit(unlink(files$temporary), add = TRUE)
+    sources <- lapply(seq_along(files$paths), function(index) list(
+        path = enc2utf8(files$paths[[index]]), mode = mapping$mode[[index]],
         sample = mapping$sample[[index]],
         haplotype = mapping$haplotype[[index]],
         prefix = mapping$prefix[[index]]
@@ -209,10 +311,12 @@ auditGFA <- function(
         tempDir = enc2utf8(normalizePath(tempdir(), mustWork = TRUE))
     ))
     if (!identical(payload$state, "completed")) {
-        .native_error(payload$diagnostics, call)
+        labels <- files$labels
+        names(labels) <- files$paths
+        .native_error(payload$diagnostics, call, labels = labels)
     }
     .audit_result(
-        payload, fasta, gfa, mapping, statistics, threads,
+        payload, files$labels, gfa, mapping, statistics, threads,
         memoryMiB, alignmentMaxCells
     )
 }

@@ -319,6 +319,14 @@ extern "C" SEXP _panpathAudit_audit(SEXP request_sexp) {
     panpath::EngineResponse response;
     try {
         auto native_request = request_from_r(request);
+        // User interrupts (Ctrl-C / Esc): the engine calls this callback from
+        // the main thread every 1024 input lines and about every 25 ms while
+        // waiting on worker threads. Rcpp::checkUserInterrupt() wraps
+        // R_CheckUserInterrupt() in R_ToplevelExec() and throws
+        // Rcpp::internal::InterruptedException, so no longjmp crosses C++
+        // frames. The engine catches it, cancels and joins all workers, and
+        // rethrows; it is re-raised below and END_RCPP turns it into an R
+        // interrupt.
         response = panpath::run_engine(native_request, [] {
             Rcpp::checkUserInterrupt();
         });

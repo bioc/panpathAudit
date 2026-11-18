@@ -1,7 +1,7 @@
 # panpathAudit
 
 [![R-CMD-check](https://github.com/gkanogiannis/panpathAudit/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/gkanogiannis/panpathAudit/actions/workflows/R-CMD-check.yaml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
 Audit whether FASTA sequences are preserved by named `P` paths and
 coordinate-aware `W` walks in GFA files.
@@ -136,8 +136,9 @@ DOI [10.20944/preprints202608.1872.v1](https://doi.org/10.20944/preprints202608.
 
 ## License
 
-Apache License 2.0. Vendored BLAKE3 and SHA-256 implementations retain their own
-notices in [`inst/third-party/`](inst/third-party); see
+MIT; see [`LICENSE.md`](LICENSE.md). The bundled BLAKE3 (CC0-1.0) and SHA-256
+(0BSD) implementations keep their own notices in
+[`inst/third-party/`](inst/third-party); see
 [`inst/PROVENANCE.md`](inst/PROVENANCE.md) for engine and example-data
 provenance.
 
