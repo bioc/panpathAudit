@@ -1,7 +1,7 @@
 Package: panpathAudit
 Type: Package
 Title: Audit Sequence Preservation in GFA Traversals
-Version: 0.99.3
+Version: 1.0.0
 Authors@R:
     c(person(given = "Anestis",
              family = "Gkanogiannis",
